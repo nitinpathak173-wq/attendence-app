@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Attendance System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- QR Code Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- QR Code Scanning Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <!-- Date FNS for date formatting -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/"></script>
+
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        /* Custom animation for the confirmation checkmark */
+        .scale-in {
+            animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Ensure scanner is visible */
+        #qr-reader {
+            border: none !important;
+        }
+        #qr-reader__dashboard_section_csr button {
+            background-color: #34D399 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .button-loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-7xl mx-auto min-h-screen">
+        
+        <!-- Loading Spinner View -->
+        <div id="loading-view" class="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500"></div>
+        </div>
+
+        <!-- Login View -->
+        <div id="login-view" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
+            <div class="w-full max-w-sm text-center">
+                <div class="flex justify-center items-center gap-2 mb-4">
+                     <svg class="h-10 w-10 text-green-500" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M4 8v-2a2 2 0 0 1 2 -2h2" />
+                        <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+                        <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+                        <path d="M16 20h2a2 2 0 0 0 2 -2v-2" />
+                        <path d="M7 12h10" />
+                    </svg>
+                    <h1 class="text-3xl font-bold">TimeTrack</h1>
+                </div>
+                <p class="text-gray-600 mb-8">Welcome! Sign in or create an account.</p>
+
+                <!-- Sign In Form -->
+                <form id="signin-form" class="bg-white p-8 rounded-2xl shadow-md border border-gray-100 text-left">
+                    <h3 class="text-xl text-center font-bold mb-6">Sign In to your Account</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="signin-email" class="block mb-2 text-sm font-medium text-gray-900">Email Address</label>
+                            <input id="signin-email" type="email" placeholder="you@company.com" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                        </div>
+                        <div>
+                            <label for="signin-password" class="block mb-2 text-sm font-medium text-gray-900">Password</label>
+                            <input id="signin-password" type="password" placeholder="••••••••" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                        </div>
+                        <div class="error-message" id="signin-error"></div>
+                    </div>
+                    <button type="submit" id="signin-btn" class="mt-6 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-transform transform hover:scale-105">
+                        <span id="signin-btn-text">Sign In</span>
+                        <div id="signin-btn-spinner" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        </div>
+                    </button>
+                    <p class="mt-6 text-sm text-center text-gray-600">
+                        Don't have an account? <button type="button" id="toggle-to-signup" class="font-semibold text-green-600 hover:underline focus:outline-none">Sign Up</button>
+                    </p>
+                </form>
+
+                <!-- Sign Up Form -->
+                <form id="signup-form" class="bg-white p-8 rounded-2xl shadow-md border border-gray-100 text-left hidden">
+                    <h3 class="text-xl text-center font-bold mb-6">Create a New Account</h3>
+                    <div class="space-y-4">
+                         <div>
+                            <label for="signup-name" class="block mb-2 text-sm font-medium text-gray-900">Full Name</label>
+                            <input id="signup-name" type="text" placeholder="John Doe" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                        </div>
+                        <div>
+                            <label for="signup-email" class="block mb-2 text-sm font-medium text-gray-900">Email Address</label>
+                            <input id="signup-email" type="email" placeholder="you@company.com" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                        </div>
+                        <div>
+                            <label for="signup-password" class="block mb-2 text-sm font-medium text-gray-900">Password</label>
+                            <input id="signup-password" type="password" placeholder="6+ characters" required class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                        </div>
+                        <div class="error-message" id="signup-error"></div>
+                    </div>
+                    <button type="submit" id="signup-btn" class="mt-6 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-transform transform hover:scale-105">
+                        <span id="signup-btn-text">Create Account</span>
+                        <div id="signup-btn-spinner" class="hidden ml-2">
+                            <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        </div>
+                    </button>
+                    <p class="mt-6 text-sm text-center text-gray-600">
+                        Already have an account? <button type="button" id="toggle-to-signin" class="font-semibold text-green-600 hover:underline focus:outline-none">Sign In</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main App View (Employee/Admin/Kiosk) -->
+        <div id="main-view" class="hidden">
+            <!-- Header -->
+            <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-30 border-b border-gray-200">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                         <svg class="h-8 w-8 text-green-500" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M4 8v-2a2 2 0 0 1 2 -2h2" />
+                            <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+                            <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+                            <path d="M16 20h2a2 2 0 0 0 2 -2v-2" />
+                            <path d="M7 12h10" />
+                        </svg>
+                        <h1 class="text-2xl font-bold text-gray-800">TimeTrack</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="user-info" class="text-right hidden">
+                            <p class="font-semibold text-gray-700" id="user-name"></p>
+                            <p class="text-sm text-gray-500" id="user-email"></p>
+                        </div>
+                        <img id="user-avatar" class="h-10 w-10 rounded-full hidden" alt="User Avatar">
+                        <button id="logout-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg text-sm transition">Logout</button>
+                    </div>
+                </div>
+                <nav id="admin-nav" class="hidden bg-gray-50 border-t border-gray-200">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                         <div class="flex justify-center space-x-4">
+                            <button data-view="admin" class="nav-btn font-medium px-3 py-3 text-sm text-green-600 border-b-2 border-green-500">Attendance Logs</button>
+                            <button data-view="kiosk" class="nav-btn font-medium px-3 py-3 text-sm text-gray-500 hover:text-gray-700">Office Kiosk</button>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            
+            <main class="p-4 sm:p-6 lg:p-8">
+                <!-- Employee View -->
+                <div id="employee-view" class="hidden max-w-md mx-auto">
+                    <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 text-center">
+                        <h2 class="text-2xl font-bold mb-2">Punch In/Out</h2>
+                        <p class="text-gray-500 mb-6">Scan the QR code displayed on your office PC.</p>
+                        <button id="scan-qr-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center transition-transform transform hover:scale-105 shadow-lg shadow-green-500/30 text-lg">
+                            <i data-lucide="scan-line" class="mr-3"></i>
+                            <span id="punch-action-text">Scan to Punch In</span>
+                        </button>
+                    </div>
+                     <div id="last-punch-info" class="mt-6 bg-white p-6 rounded-2xl shadow-md border border-gray-100 text-center hidden">
+                        <h3 class="text-lg font-semibold text-gray-700">Last Activity</h3>
+                        <p id="last-punch-text" class="text-3xl font-bold text-green-500 mt-2"></p>
+                        <p id="last-punch-status" class="text-gray-500 mt-1"></p>
+                    </div>
+                </div>
+
+                <!-- Admin View -->
+                <div id="admin-view" class="hidden">
+                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-800">Attendance Dashboard</h2>
+                        <div class="flex items-center gap-4">
+                            <input type="date" id="date-filter" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                            <button id="export-csv-btn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 transition">
+                                <i data-lucide="download" class="w-5 h-5"></i>
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">Employee</th>
+                                        <th scope="col" class="px-6 py-3">Date</th>
+                                        <th scope="col" class="px-6 py-3">Punch In</th>
+                                        <th scope="col" class="px-6 py-3">Punch Out</th>
+                                        <th scope="col" class="px-6 py-3">Total Hours</th>
+                                        <th scope="col" class="px-6 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance-table-body">
+                                    <!-- Rows will be injected here -->
+                                </tbody>
+                            </table>
+                             <div id="no-logs-message" class="text-center py-12 text-gray-500 hidden">
+                                <i data-lucide="calendar-x" class="mx-auto h-12 w-12 text-gray-400"></i>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900">No records found</h3>
+                                <p class="mt-1 text-sm text-gray-500">There are no attendance logs for the selected date.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kiosk View -->
+                <div id="kiosk-view" class="hidden text-center max-w-lg mx-auto">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
+                        <h2 class="text-3xl font-bold text-gray-800" id="kiosk-time"></h2>
+                        <p class="text-gray-500 mb-6" id="kiosk-date"></p>
+                        <div id="qrcode-container" class="flex justify-center items-center p-4 bg-gray-100 rounded-xl">
+                             <div id="qrcode" class="bg-white p-4 rounded-lg shadow-inner"></div>
+                        </div>
+                        <p class="mt-6 text-gray-600 font-medium">Scan this QR to Punch In/Out</p>
+                        <div class="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-1000 ease-linear"></div>
+                        </div>
+                         <p class="mt-2 text-sm text-gray-500">QR code refreshes automatically</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <!-- QR Scanner View (Modal) -->
+        <div id="scanner-view" class="hidden fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-40 p-4">
+             <div class="bg-white rounded-2xl w-full max-w-md mx-auto shadow-xl overflow-hidden">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold">Scan QR Code</h3>
+                    <button id="close-scanner-btn" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="qr-reader" class="w-full"></div>
+            </div>
+        </div>
+
+        <!-- Confirmation View (Modal) -->
+        <div id="confirmation-view" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl w-full max-w-sm text-center p-8 scale-in">
+                <div id="confirmation-icon" class="w-24 h-24 rounded-full mx-auto flex items-center justify-center mb-6">
+                    <i id="conf-icon-type" class="w-16 h-16 text-white"></i>
+                </div>
+                <h2 id="confirmation-title" class="text-2xl font-bold"></h2>
+                <p id="confirmation-message" class="text-gray-600 mt-2"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import necessary functions from Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            updateProfile,
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc,
+            collection,
+            addDoc,
+            query,
+            where,
+            getDocs,
+            Timestamp,
+            orderBy,
+            limit
+        } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+        // --- Your Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3tF-1UxpX5vd_zXctVIJLUQ0WuCeL44g",
+            authDomain: "app-6f979.firebaseapp.com",
+            projectId: "app-6f979",
+            storageBucket: "app-6f979.firebasestorage.app",
+            messagingSenderId: "402815896106",
+            appId: "1:402815896106:web:d5bd4d7f470b9eabf81153"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- DOM Elements ---
+        const loadingView = document.getElementById('loading-view');
+        const loginView = document.getElementById('login-view');
+        const mainView = document.getElementById('main-view');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfo = document.getElementById('user-info');
+        const userName = document.getElementById('user-name');
+        const userEmail = document.getElementById('user-email');
+        const userAvatar = document.getElementById('user-avatar');
+
+        // Login Forms
+        const signinForm = document.getElementById('signin-form');
+        const signupForm = document.getElementById('signup-form');
+        const signinEmail = document.getElementById('signin-email');
+        const signinPassword = document.getElementById('signin-password');
+        const signupName = document.getElementById('signup-name');
+        const signupEmail = document.getElementById('signup-email');
+        const signupPassword = document.getElementById('signup-password');
+        const toggleToSignupBtn = document.getElementById('toggle-to-signup');
+        const toggleToSigninBtn = document.getElementById('toggle-to-signin');
+        
+        // Form buttons and error messages
+        const signinBtn = document.getElementById('signin-btn');
+        const signinBtnText = document.getElementById('signin-btn-text');
+        const signinBtnSpinner = document.getElementById('signin-btn-spinner');
+        const signinError = document.getElementById('signin-error');
+        
+        const signupBtn = document.getElementById('signup-btn');
+        const signupBtnText = document.getElementById('signup-btn-text');
+        const signupBtnSpinner = document.getElementById('signup-btn-spinner');
+        const signupError = document.getElementById('signup-error');
+
+        const employeeView = document.getElementById('employee-view');
+        const adminView = document.getElementById('admin-view');
+        const kioskView = document.getElementById('kiosk-view');
+        const scannerView = document.getElementById('scanner-view');
+        const confirmationView = document.getElementById('confirmation-view');
+        
+        const adminNav = document.getElementById('admin-nav');
+        const navButtons = document.querySelectorAll('.nav-btn');
+
+        const scanQrBtn = document.getElementById('scan-qr-btn');
+        const punchActionText = document.getElementById('punch-action-text');
+        const closeScannerBtn = document.getElementById('close-scanner-btn');
+        const lastPunchInfo = document.getElementById('last-punch-info');
+        const lastPunchText = document.getElementById('last-punch-text');
+        const lastPunchStatus = document.getElementById('last-punch-status');
+
+        const attendanceTableBody = document.getElementById('attendance-table-body');
+        const noLogsMessage = document.getElementById('no-logs-message');
+        const dateFilter = document.getElementById('date-filter');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+
+        const qrcodeContainer = document.getElementById('qrcode');
+        const kioskTime = document.getElementById('kiosk-time');
+        const kioskDate = document.getElementById('kiosk-date');
+        const progressBar = document.getElementById('progress-bar');
+
+        let qrCodeGenerator;
+        let html5QrCode;
+        let kioskInterval;
+        let progressInterval;
+        let currentUser = null;
+        let currentUserData = null;
+
+        // --- App State ---
+        const state = {
+            currentView: 'employee',
+            isAdmin: false,
+            punchStatus: 'out' // 'in' or 'out'
+        };
+        
+        // --- Utility Functions ---
+        const showView = (viewId) => {
+            ['login-view', 'main-view', 'loading-view'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            if (viewId) document.getElementById(viewId).classList.remove('hidden');
+        };
+
+        const showMainSubView = (view) => {
+            ['employee-view', 'admin-view', 'kiosk-view'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+             if (view) document.getElementById(view + '-view').classList.remove('hidden');
+        };
+
+        const showError = (element, message) => {
+            element.textContent = message;
+            element.classList.add('show');
+        };
+
+        const hideError = (element) => {
+            element.classList.remove('show');
+        };
+
+        const setButtonLoading = (button, textElement, spinnerElement, loading) => {
+            if (loading) {
+                button.disabled = true;
+                button.classList.add('button-loading');
+                textElement.classList.add('hidden');
+                spinnerElement.classList.remove('hidden');
+            } else {
+                button.disabled = false;
+                button.classList.remove('button-loading');
+                textElement.classList.remove('hidden');
+                spinnerElement.classList.add('hidden');
+            }
+        };
+
+        const showConfirmation = (type, title, message) => {
+            const confView = document.getElementById('confirmation-view');
+            const confIconDiv = document.getElementById('confirmation-icon');
+            const confIcon = document.getElementById('conf-icon-type');
+            
+            document.getElementById('confirmation-title').textContent = title;
+            document.getElementById('confirmation-message').textContent = message;
+
+            confIcon.removeAttribute('data-lucide');
+            if (type === 'success') {
+                confIconDiv.className = 'w-24 h-24 rounded-full mx-auto flex items-center justify-center mb-6 bg-green-100';
+                confIcon.setAttribute('data-lucide', 'check');
+                confIcon.className = 'w-16 h-16 text-green-600';
+            } else {
+                confIconDiv.className = 'w-24 h-24 rounded-full mx-auto flex items-center justify-center mb-6 bg-red-100';
+                confIcon.setAttribute('data-lucide', 'x-circle');
+                confIcon.className = 'w-16 h-16 text-red-600';
+            }
+            lucide.createIcons();
+
+            confView.classList.remove('hidden');
+            setTimeout(() => confView.classList.add('hidden'), 4000);
+        };
+
+        const getTodayDateString = () => {
+             return dateFns.format(new Date(), 'yyyy-MM-dd');
+        };
+
+        const getUserErrorMessage = (errorCode) => {
+            switch (errorCode) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    return "Invalid email or password. Please check your credentials.";
+                case 'auth/invalid-email':
+                    return "Please enter a valid email address.";
+                case 'auth/user-disabled':
+                    return "This account has been disabled. Contact support.";
+                case 'auth/too-many-requests':
+                    return "Too many failed attempts. Please try again later.";
+                case 'auth/email-already-in-use':
+                    return "This email address is already registered. Please sign in.";
+                case 'auth/weak-password':
+                    return "Password must be at least 6 characters long.";
+                case 'auth/network-request-failed':
+                    return "Network error. Please check your connection.";
+                default:
+                    return "An unexpected error occurred. Please try again.";
+            }
+        };
+
+        // --- Authentication ---
+        const handleSignin = async (e) => {
+            e.preventDefault();
+            hideError(signinError);
+            
+            const email = signinEmail.value.trim();
+            const password = signinPassword.value;
+            
+            if (!email || !password) {
+                showError(signinError, "Please fill in all fields.");
+                return;
+            }
+
+            setButtonLoading(signinBtn, signinBtnText, signinBtnSpinner, true);
+            
+            try {
+                console.log("Attempting to sign in with:", email);
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("Sign in successful:", userCredential.user);
+                // Clear form on success
+                signinForm.reset();
+            } catch (error) {
+                console.error("Sign in error:", error);
+                showError(signinError, getUserErrorMessage(error.code));
+            } finally {
+                setButtonLoading(signinBtn, signinBtnText, signinBtnSpinner, false);
+            }
+        };
+
+        const handleSignup = async (e) => {
+            e.preventDefault();
+            hideError(signupError);
+            
+            const name = signupName.value.trim();
+            const email = signupEmail.value.trim();
+            const password = signupPassword.value;
+
+            if (!name || !email || !password) {
+                showError(signupError, "Please fill in all fields.");
+                return;
+            }
+
+            if (password.length < 6) {
+                showError(signupError, "Password must be at least 6 characters long.");
+                return;
+            }
+
+            setButtonLoading(signupBtn, signupBtnText, signupBtnSpinner, true);
+
+            try {
+                console.log("Attempting to create account for:", email);
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, {
+                    displayName: name
+                });
+                console.log("Account created successfully:", userCredential.user);
+                // Clear form on success
+                signupForm.reset();
+            } catch (error) {
+                console.error("Sign up error:", error);
+                showError(signupError, getUserErrorMessage(error.code));
+            } finally {
+                setButtonLoading(signupBtn, signupBtnText, signupBtnSpinner, false);
+            }
+        };
+
+        const handleLogout = async () => {
+            try {
+                await signOut(auth);
+                if(kioskInterval) clearInterval(kioskInterval);
+                if(progressInterval) clearInterval(progressInterval);
+            } catch (error) {
+                console.error("Logout error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            console.log("Auth state changed:", user ? user.email : "No user");
+            if (user) {
+                currentUser = user;
+                try {
+                    await setupUser(user);
+                    showView('main-view');
+                } catch (error) {
+                    console.error("Setup user error:", error);
+                    showConfirmation('error', 'Setup Error', 'Failed to set up user data. Please try again.');
+                }
+            } else {
+                currentUser = null;
+                currentUserData = null;
+                showView('login-view');
+                showMainSubView(null);
+                adminNav.classList.add('hidden');
+                userInfo.classList.add('hidden');
+                userAvatar.classList.add('hidden');
+            }
+            loadingView.classList.add('hidden');
+        });
+
+        const setupUser = async (user) => {
+            try {
+                const userRef = doc(db, "employees", user.uid);
+                let userDoc = await getDoc(userRef);
+
+                if (!userDoc.exists()) {
+                    console.log("Creating new user document for:", user.email);
+                    await setDoc(userRef, {
+                        name: user.displayName || user.email,
+                        email: user.email,
+                        role: 'employee', // default role
+                        createdAt: Timestamp.now()
+                    });
+                    userDoc = await getDoc(userRef);
+                }
+                
+                currentUserData = userDoc.data();
+                state.isAdmin = currentUserData.role === 'admin';
+
+                // Update UI
+                userName.textContent = currentUserData.name || user.email;
+                userEmail.textContent = user.email;
+                
+                if (user.photoURL) {
+                    userAvatar.src = user.photoURL;
+                    userAvatar.classList.remove('hidden');
+                } else {
+                    userAvatar.classList.add('hidden');
+                }
+                
+                userInfo.classList.remove('hidden');
+
+                if (state.isAdmin) {
+                    state.currentView = 'admin';
+                    adminNav.classList.remove('hidden');
+                    updateNav();
+                    renderAdminView();
+                } else {
+                    state.currentView = 'employee';
+                    adminNav.classList.add('hidden');
+                    await renderEmployeeView();
+                }
+                showMainSubView(state.currentView);
+                lucide.createIcons();
+            } catch (error) {
+                console.error("Error in setupUser:", error);
+                throw error;
+            }
+        };
+
+        // --- Employee View Logic ---
+        const renderEmployeeView = async () => {
+            try {
+                const todayStr = getTodayDateString();
+                const attendanceCol = collection(db, 'attendance_logs');
+                const q = query(
+                    attendanceCol, 
+                    where('employeeRef', '==', doc(db, 'employees', currentUser.uid)),
+                    where('date', '==', todayStr),
+                    limit(1)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                lastPunchInfo.classList.add('hidden');
+
+                if (querySnapshot.empty) {
+                    state.punchStatus = 'out';
+                    punchActionText.textContent = 'Scan to Punch In';
+                } else {
+                    const latestLog = querySnapshot.docs[0].data();
+                    if (latestLog.punchOutTime) {
+                        state.punchStatus = 'out';
+                        punchActionText.textContent = 'Scan to Punch In Again';
+                        lastPunchText.textContent = dateFns.format(latestLog.punchOutTime.toDate(), 'h:mm a');
+                        lastPunchStatus.textContent = `You're punched out for the day.`;
+                        lastPunchInfo.classList.remove('hidden');
+                    } else {
+                        state.punchStatus = 'in';
+                        punchActionText.textContent = 'Scan to Punch Out';
+                        lastPunchText.textContent = dateFns.format(latestLog.punchInTime.toDate(), 'h:mm a');
+                        lastPunchStatus.textContent = "You're currently punched in.";
+                        lastPunchInfo.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error("Error rendering employee view:", error);
+                showConfirmation('error', 'Error', 'Failed to load attendance data.');
+            }
+        };
+
+        const handleScanSuccess = async (decodedText, decodedResult) => {
+            html5QrCode.stop();
+            scannerView.classList.add('hidden');
+            loadingView.classList.remove('hidden');
+            
+            try {
+                const sessionRef = doc(db, "qr_sessions", decodedText);
+                const sessionDoc = await getDoc(sessionRef);
+
+                if (!sessionDoc.exists() || sessionDoc.data().expiresAt.toDate() < new Date()) {
+                    throw new Error('Invalid or expired QR code.');
+                }
+
+                const todayStr = getTodayDateString();
+                const now = Timestamp.now();
+                const attendanceCol = collection(db, 'attendance_logs');
+                const q = query(
+                    attendanceCol,
+                    where('employeeRef', '==', doc(db, 'employees', currentUser.uid)),
+                    where('date', '==', todayStr),
+                    where('punchOutTime', '==', null)
+                );
+                
+                const existingLogs = await getDocs(q);
+
+                if (state.punchStatus === 'out' && existingLogs.empty) {
+                    // Punching In
+                    await addDoc(attendanceCol, {
+                        employeeRef: doc(db, 'employees', currentUser.uid),
+                        employeeName: currentUserData.name,
+                        date: todayStr,
+                        punchInTime: now,
+                        punchOutTime: null,
+                        totalHours: 0
+                    });
+                    showConfirmation('success', 'Punched In!', `Successfully punched in at ${dateFns.format(now.toDate(), 'h:mm a')}.`);
+                } else if (state.punchStatus === 'in' && !existingLogs.empty) {
+                    // Punching Out
+                    const logToUpdateRef = existingLogs.docs[0].ref;
+                    const punchInTime = existingLogs.docs[0].data().punchInTime.toDate();
+                    const totalHours = dateFns.differenceInMinutes(now.toDate(), punchInTime) / 60;
+
+                    await setDoc(logToUpdateRef, { 
+                        punchOutTime: now,
+                        totalHours: parseFloat(totalHours.toFixed(2))
+                    }, { merge: true });
+                    showConfirmation('success', 'Punched Out!', `Successfully punched out at ${dateFns.format(now.toDate(), 'h:mm a')}.`);
+                } else {
+                    throw new Error('Punch status mismatch. Please refresh.');
+                }
+                
+                // Invalidate the QR session
+                await setDoc(sessionRef, { used: true, usedBy: currentUser.uid }, { merge: true });
+
+            } catch (error) {
+                console.error("Punch error:", error);
+                showConfirmation('error', 'Error', error.message);
+            } finally {
+                loadingView.classList.add('hidden');
+                await renderEmployeeView();
+            }
+        };
+
+        const startScanner = () => {
+            scannerView.classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, handleScanSuccess, (error) => {});
+        };
+
+        const stopScanner = () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    scannerView.classList.add('hidden');
+                }).catch(err => console.error('Failed to stop scanner', err));
+            } else {
+                 scannerView.classList.add('hidden');
+            }
+        };
+
+        // --- Admin View Logic ---
+        const renderAdminView = async () => {
+            loadingView.classList.remove('hidden');
+            try {
+                const filterDate = dateFilter.value || getTodayDateString();
+                
+                const q = query(collection(db, "attendance_logs"), where("date", "==", filterDate));
+                const querySnapshot = await getDocs(q);
+
+                attendanceTableBody.innerHTML = '';
+
+                if (querySnapshot.empty) {
+                    noLogsMessage.classList.remove('hidden');
+                } else {
+                     noLogsMessage.classList.add('hidden');
+                     querySnapshot.forEach(doc => {
+                        const log = doc.data();
+                        const punchIn = log.punchInTime ? dateFns.format(log.punchInTime.toDate(), 'h:mm a') : 'N/A';
+                        const punchOut = log.punchOutTime ? dateFns.format(log.punchOutTime.toDate(), 'h:mm a') : 'N/A';
+                        
+                        let status = '<span class="bg-yellow-100 text-yellow-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Punched In</span>';
+                        if (log.punchOutTime) {
+                             status = '<span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">Completed</span>';
+                        }
+
+                        const row = `
+                            <tr class="bg-white border-b hover:bg-gray-50">
+                                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${log.employeeName}</td>
+                                <td class="px-6 py-4">${log.date}</td>
+                                <td class="px-6 py-4">${punchIn}</td>
+                                <td class="px-6 py-4">${punchOut}</td>
+                                <td class="px-6 py-4">${log.totalHours.toFixed(2)}</td>
+                                <td class="px-6 py-4">${status}</td>
+                            </tr>
+                        `;
+                        attendanceTableBody.innerHTML += row;
+                    });
+                }
+            } catch (error) {
+                console.error("Error rendering admin view:", error);
+                showConfirmation('error', 'Error', 'Failed to load attendance data.');
+            } finally {
+                loadingView.classList.add('hidden');
+            }
+        };
+
+        const exportToCSV = () => {
+            const rows = [['Employee', 'Date', 'Punch In', 'Punch Out', 'Total Hours']];
+            const tableRows = attendanceTableBody.querySelectorAll('tr');
+            
+            tableRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                rows.push([
+                    cells[0].innerText,
+                    cells[1].innerText,
+                    cells[2].innerText,
+                    cells[3].innerText,
+                    cells[4].innerText,
+                ]);
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `attendance_logs_${dateFilter.value}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // --- Kiosk View Logic ---
+        const renderKioskView = () => {
+            if (kioskInterval) clearInterval(kioskInterval);
+            if (progressInterval) clearInterval(progressInterval);
+
+            if (!qrCodeGenerator) {
+                qrCodeGenerator = new QRCode(qrcodeContainer, {
+                    width: 256,
+                    height: 256,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+            
+            generateNewQRCode();
+            kioskInterval = setInterval(generateNewQRCode, 60000);
+            updateKioskClock();
+            setInterval(updateKioskClock, 1000);
+        };
+
+        const generateNewQRCode = async () => {
+            try {
+                const sessionRef = doc(collection(db, "qr_sessions"));
+                const expiresAt = new Date(Date.now() + 60000);
+                
+                await setDoc(sessionRef, {
+                    createdAt: Timestamp.now(),
+                    expiresAt: Timestamp.fromDate(expiresAt)
+                });
+
+                qrCodeGenerator.makeCode(sessionRef.id);
+                startProgressBar();
+            } catch (error) {
+                console.error("Error generating QR code:", error);
+            }
+        };
+
+        const startProgressBar = () => {
+            if (progressInterval) clearInterval(progressInterval);
+            let width = 100;
+            progressBar.style.width = width + '%';
+            const duration = 60000; // 60 seconds
+            const decrement = 100 / (duration / 100);
+
+            progressInterval = setInterval(() => {
+                width -= decrement;
+                progressBar.style.width = width + '%';
+                if (width <= 0) {
+                    clearInterval(progressInterval);
+                }
+            }, 100);
+        };
+        
+        const updateKioskClock = () => {
+            const now = new Date();
+            kioskTime.textContent = dateFns.format(now, 'h:mm:ss a');
+            kioskDate.textContent = dateFns.format(now, 'EEEE, MMMM d, yyyy');
+        };
+
+        // --- Navigation ---
+        const handleNavClick = (e) => {
+            const targetView = e.target.dataset.view;
+            if (targetView && state.currentView !== targetView) {
+                state.currentView = targetView;
+                showMainSubView(targetView);
+                updateNav();
+                
+                if(kioskInterval) clearInterval(kioskInterval);
+                if(progressInterval) clearInterval(progressInterval);
+
+                if(targetView === 'admin') renderAdminView();
+                if(targetView === 'kiosk') renderKioskView();
+            }
+        };
+
+        const updateNav = () => {
+            navButtons.forEach(btn => {
+                if(btn.dataset.view === state.currentView) {
+                    btn.classList.add('text-green-600', 'border-green-500');
+                    btn.classList.remove('text-gray-500', 'hover:text-gray-700');
+                } else {
+                    btn.classList.remove('text-green-600', 'border-green-500');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-700');
+                }
+            });
+        };
+
+        // --- Event Listeners ---
+        const initializeEventListeners = () => {
+            console.log("Initializing event listeners");
+            
+            // Form submissions
+            signinForm?.addEventListener('submit', handleSignin);
+            signupForm?.addEventListener('submit', handleSignup);
+
+            // Form toggles
+            toggleToSignupBtn?.addEventListener('click', () => {
+                hideError(signinError);
+                signinForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+            });
+            
+            toggleToSigninBtn?.addEventListener('click', () => {
+                hideError(signupError);
+                signupForm.classList.add('hidden');
+                signinForm.classList.remove('hidden');
+            });
+
+            // Main app buttons
+            logoutBtn?.addEventListener('click', handleLogout);
+            scanQrBtn?.addEventListener('click', startScanner);
+            closeScannerBtn?.addEventListener('click', stopScanner);
+            dateFilter?.addEventListener('change', renderAdminView);
+            exportCsvBtn?.addEventListener('click', exportToCSV);
+            
+            // Navigation
+            navButtons.forEach(btn => btn.addEventListener('click', handleNavClick));
+            
+            lucide.createIcons();
+        };
+
+        // --- Initialize App ---
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded, initializing app");
+            loadingView.classList.remove('hidden');
+            dateFilter.value = getTodayDateString();
+            initializeEventListeners();
+        });
+
+    </script>
+</body>
+</html>

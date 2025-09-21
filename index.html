@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Atmark</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #27ae60; /* Theme Green */
+            --dark-blue: #1e8449; /* Darker Green for Header */
+            --light-gray: #ffffff; /* Main background set to white */
+            --medium-gray: #e8f5e9; /* Very Light Green for accents */
+            --text-color: #333;
+            --white: #ffffff;
+            --danger-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12; /* For half day */
+            --info-color: #3498db;    /* For holiday */
+            --break-color: #8e44ad; /* Purple for breaks */
+        }
+        body { 
+            font-family: 'Lato', sans-serif; 
+            background-color: var(--light-gray); 
+            margin: 0; 
+            color: var(--text-color);
+            font-size: 14px;
+            /* --- MODIFICATION START: Disable text selection/copying --- */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; /* Standard syntax */
+            /* --- MODIFICATION END --- */
+        }
+        .App { text-align: center; }
+        .app-header { background-color: var(--dark-blue); padding: 15px 20px; color: var(--white); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .app-header h1 { margin: 0; font-size: 1.5em; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+        .header-button { background-color: var(--primary-color); color: var(--white); border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+        .signout-button { background-color: var(--danger-color); }
+        .auth-container { display: flex; justify-content: center; align-items: center; margin: 40px 20px; }
+        .auth-form { background: var(--white); padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px; border: 1px solid #eee; box-sizing: border-box; }
+        .add-employee-form { max-width: 500px; margin: 20px 0; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .auth-button { width: 100%; padding: 12px; background-color: var(--primary-color); color: var(--white); border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
+        .loading-spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 50px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .dashboard-layout { display: flex; max-width: 1200px; margin: 20px auto; background: var(--white); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); border-radius: 8px; min-height: 80vh; border: 1px solid #e0e0e0; }
+        .dashboard-nav { flex: 0 0 220px; background-color: var(--medium-gray); border-right: 1px solid #ddd; padding: 20px 0; border-radius: 8px 0 0 8px; }
+        .dashboard-nav-button { 
+            display: block; 
+            width: 100%; 
+            padding: 15px 20px; 
+            background: none; 
+            border: none; 
+            text-align: left; 
+            font-size: 1em; 
+            color: var(--dark-blue); 
+            cursor: pointer; 
+            border-left: 4px solid transparent; 
+            font-family: 'Lato', sans-serif; 
+            /* --- MODIFICATION START: Add smooth transition for visual effects --- */
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+            /* --- MODIFICATION END --- */
+        }
+        .dashboard-nav-button.active { 
+            background-color: var(--white); 
+            border-left: 4px solid var(--primary-color); 
+            font-weight: bold; 
+        }
+        /* --- MODIFICATION START: Add hover effect for non-active buttons --- */
+        .dashboard-nav-button:not(.active):hover {
+            background-color: #dcf0de; /* A slightly darker shade of medium-gray */
+            color: var(--primary-color);
+        }
+        /* --- MODIFICATION END --- */
+        .dashboard-content { flex-grow: 1; padding: 30px; overflow: hidden; }
+        .table-responsive { display: block; width: 100%; overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; white-space: nowrap; }
+        .data-table th { background-color: var(--medium-gray); }
+        .incomplete-record { color: #e67e22; font-weight: bold; }
+
+        .status-cell span {
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: var(--white);
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .status-present { background-color: var(--success-color); }
+        .status-absent { background-color: var(--danger-color); }
+        .status-holiday { background-color: var(--info-color); }
+        .status-half-day { background-color: var(--warning-color); color: var(--text-color) !important; }
+
+        .punch-log-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+        .punch-log-item {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .punch-log-item.punch-in {
+            background-color: var(--success-color);
+            color: var(--white);
+        }
+        .punch-log-item.punch-out {
+            background-color: #fbe9e7;
+            color: #d84315;
+            border: 1px solid #ffccbc;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-layout { flex-direction: column; margin: 10px auto; }
+            .dashboard-nav { flex-direction: row; flex: 0 0 auto; border-right: none; border-bottom: 1px solid #ddd; padding: 0; border-radius: 8px 8px 0 0; display: flex; overflow-x: auto; }
+            .dashboard-nav-button { 
+                text-align: center; 
+                border-left: none; 
+                border-bottom: 4px solid transparent; 
+                padding: 15px 20px;
+                font-size: 0.9em; 
+                white-space: nowrap; 
+            }
+            .dashboard-nav-button.active { 
+                border-left-color: transparent; /* Reset left border for mobile */
+                border-bottom: 4px solid var(--primary-color); 
+            }
+
+            .dashboard-content { padding: 20px 15px; }
+            .auth-form { padding: 20px; }
+            .add-employee-form { margin: 10px 0; }
+        }
+
+        .qr-timer { font-size: 1.5em; font-weight: bold; margin-bottom: 15px; }
+        .qr-timer span { color: var(--primary-color); }
+        #qrcode-container { display: flex; justify-content: center; align-items: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; min-height: 256px; }
+        .scan-area { display: flex; flex-direction: column; align-items: center; }
+        .qr-reader-container { width: 100%; max-width: 400px; aspect-ratio: 1 / 1; border: 3px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #fafafa; margin-bottom: 20px; position: relative; }
+        #qr-reader { width: 100%; border-radius: 6px; }
+        .qr-reader-container p { position: absolute; }
+        .scan-button { background-color: var(--success-color); color: var(--white); font-size: 1.1em; padding: 15px 30px; border-radius: 8px; border: none; cursor: pointer; }
+        .scan-button.break-button { background-color: var(--break-color); }
+        .status-box { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1.1em; }
+        .status-in { background-color: #e8f5e9; color: #2e7d32; }
+        .status-out { background-color: #fff3e0; color: #e65100; }
+        .message { padding: 10px; border-radius: 4px; margin: 15px 0; border: 1px solid transparent; }
+        .message.success { background-color: #e8f5e9; color: #2e7d32; }
+        .message.error { background-color: #fdecea; color: #c62828; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--white); padding: 30px 40px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: left;}
+        .modal-content h2 { color: var(--dark-blue); margin-top: 0; }
+        .profile-info p { margin: 10px 0; font-size: 1.1em; }
+        .profile-info strong { color: var(--dark-blue); min-width: 110px; display: inline-block; }
+        .modal-close-btn { display: block; margin: 20px auto 0; padding: 10px 30px; background-color: var(--primary-color); color: var(--white); border: none; border-radius: 5px; font-size: 1em; cursor: pointer; }
+
+        .break-management {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .break-status {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        .break-status.on-break {
+            color: var(--break-color);
+            font-weight: bold;
+        }
+        .break-status.disabled {
+            color: #777;
+        }
+    </style>
+
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.0.9/dist/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const firebaseConfig = {
+          apiKey: "AIzaSyA4521rQz-6fd1Gvo52T6m1hJjuo06QguU",
+          authDomain: "attendence-f7ea5.firebaseapp.com",
+          projectId: "attendence-f7ea5",
+          storageBucket: "attendence-f7ea5.appspot.com",
+          messagingSenderId: "693491114475",
+          appId: "1:693491114475:web:fdf1b333c9c9938a96b9ae"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- GLOBAL HELPER FUNCTION FOR LOCAL DATE ---
+        const getLocalDateString = (date = new Date()) => {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const ProfileModal = ({ user, onClose }) => {
+            if (!user) return null;
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h2>User Profile</h2>
+                        <div className="profile-info">
+                            <p><strong>Name:</strong> {user.name || 'Not set'}</p>
+                            <p><strong>Email:</strong> {user.email}</p>
+                            <p><strong>Employee ID:</strong> {user.employeeId || 'Not set'}</p>
+                            <p><strong>Role:</strong> <span style={{textTransform: 'capitalize'}}>{user.role}</span></p>
+                        </div>
+                        <button className="modal-close-btn" onClick={onClose}>Close</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Auth = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch (err) {
+                    alert(err.message);
+                }
+            };
+
+            return (
+                <div className="auth-container">
+                    <div className="auth-form">
+                        <h2>Sign In</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="input-group">
+                                <label>Email</label>
+                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                            </div>
+                            <div className="input-group">
+                                <label>Password</label>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                            </div>
+                            <button type="submit" className="auth-button">Sign In</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+        
+        const AdminDashboard = () => {
+            const [users, setUsers] = useState([]);
+            const [attendanceRecords, setAttendanceRecords] = useState([]);
+            const [loading, setLoading] = useState({ users: true, records: true });
+            const qrCodeRef = useRef(null);
+            const [activeView, setActiveView] = useState('dashboard');
+            const [countdown, setCountdown] = useState(30);
+            const [qrPayload, setQrPayload] = useState('');
+            const [newEmployee, setNewEmployee] = useState({ name: '', email: '', password: '', employeeId: '' });
+            const [message, setMessage] = useState(null);
+            
+            // --- Helper Functions for Time Calculation ---
+            const calculateTotalBreakMs = (breakEvents) => {
+                if (!breakEvents || breakEvents.length < 2) return 0;
+                const breaks = breakEvents.map(b => ({...b, time: b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp) }))
+                                          .sort((a, b) => a.time - b.time);
+                let totalBreakMs = 0;
+                let lastStartTime = null;
+                for (const event of breaks) {
+                    if (event.type === 'start') {
+                        lastStartTime = event.time;
+                    } else if (event.type === 'end' && lastStartTime) {
+                        totalBreakMs += (event.time - lastStartTime);
+                        lastStartTime = null;
+                    }
+                }
+                return totalBreakMs > 0 ? totalBreakMs : 0;
+            };
+
+            const formatMilliseconds = (ms) => {
+                if (ms <= 0) return null;
+                const hours = Math.floor(ms / 3600000);
+                const minutes = Math.floor((ms % 3600000) / 60000);
+                return `${hours}h ${minutes}m`;
+            };
+
+            const handleNewEmployeeChange = (e) => {
+                setNewEmployee({ ...newEmployee, [e.target.name]: e.target.value });
+            };
+
+            const handleCreateEmployee = async (e) => {
+                e.preventDefault();
+                setMessage(null);
+                const { name, email, password, employeeId } = newEmployee;
+
+                if (!name || !email || !password || !employeeId) {
+                    setMessage({ type: 'error', text: 'All fields are required.' });
+                    return;
+                }
+                
+                const idCheck = await db.collection('users').where('employeeId', '==', employeeId).get();
+                if (!idCheck.empty) {
+                    setMessage({ type: 'error', text: 'An employee with this ID already exists.'});
+                    return;
+                }
+
+                const tempAppName = `createUser-${Date.now()}`;
+                let secondaryApp;
+                try {
+                    secondaryApp = firebase.initializeApp(firebaseConfig, tempAppName);
+                    const secondaryAuth = secondaryApp.auth();
+                    
+                    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+                    
+                    await db.collection("users").doc(userCredential.user.uid).set({
+                        uid: userCredential.user.uid,
+                        email: email,
+                        name: name,
+                        role: 'employee',
+                        employeeId: employeeId,
+                    });
+
+                    await secondaryAuth.signOut();
+                    
+                    setMessage({ type: 'success', text: `Employee ${name} created successfully!` });
+                    setNewEmployee({ name: '', email: '', password: '', employeeId: '' });
+                    
+                } catch (error) {
+                    console.error("Error creating employee:", error);
+                    setMessage({ type: 'error', text: error.message });
+                } finally {
+                    if (secondaryApp) {
+                        secondaryApp.delete();
+                    }
+                }
+            };
+            
+            useEffect(() => {
+                let qrInterval;
+                let countdownInterval;
+                if (activeView === 'dashboard') {
+                    const generateNewToken = async () => {
+                        setCountdown(30);
+                        const token = Math.random().toString(36).substring(2, 15);
+                        const expiry = Date.now() + 30000;
+                        try {
+                            await db.collection('system').doc('qr_token').set({ token, expiry });
+                            setQrPayload(JSON.stringify({ token, expiry }));
+                        } catch (error) {
+                            console.error("Error generating QR token:", error);
+                        }
+                    };
+                    
+                    generateNewToken();
+                    qrInterval = setInterval(generateNewToken, 30000);
+                    countdownInterval = setInterval(() => {
+                        setCountdown(prev => (prev > 0 ? prev - 1 : 30));
+                    }, 1000);
+                }
+                
+                return () => {
+                    clearInterval(qrInterval);
+                    clearInterval(countdownInterval);
+                };
+            }, [activeView]);
+
+            useEffect(() => {
+                if (activeView === 'dashboard' && qrPayload) {
+                    const qrContainer = document.getElementById('qrcode-container');
+                    if (qrContainer) {
+                        qrContainer.innerHTML = '';
+                        qrCodeRef.current = new QRCode(qrContainer, { text: qrPayload, width: 256, height: 256 });
+                    }
+                }
+            }, [activeView, qrPayload]);
+
+            useEffect(() => {
+                const fetchData = async () => {
+                    setLoading({ users: true, records: true });
+                    try {
+                        const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+                        const endDate = new Date();
+                        const startDate = new Date();
+                        startDate.setDate(endDate.getDate() - 30);
+
+                        // Fetch users, attendance, overrides, and breaks
+                        const userSnapshot = await db.collection('users').get();
+                        const allUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setUsers(allUsers);
+                        const employeeUsers = allUsers.filter(u => u.role === 'employee');
+                        
+                        const attendanceSnapshot = await db.collection('attendance').where('timestamp', '>=', startDate).get();
+                        const records = attendanceSnapshot.docs.map(doc => doc.data());
+                        const overridesSnapshot = await db.collection('attendance_overrides').where('date', '>=', getLocalDateString(startDate)).get();
+                        const overrides = overridesSnapshot.docs.map(doc => doc.data());
+                        const breaksSnapshot = await db.collection('breaks').where('timestamp', '>=', startDate).get();
+                        const allBreaks = breaksSnapshot.docs.map(doc => doc.data());
+
+                        // Process and group data
+                        const recordsByDateAndUser = records.reduce((acc, record) => {
+                            const key = `${record.userId}|${record.date}`;
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push(record);
+                            return acc;
+                        }, {});
+
+                        const breaksByDateAndUser = allBreaks.reduce((acc, record) => {
+                            const key = `${record.userId}|${record.date}`;
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push({ type: record.type, timestamp: record.timestamp });
+                            return acc;
+                        }, {});
+
+                        const overridesMap = overrides.reduce((acc, override) => {
+                            acc[`${override.userId}|${override.date}`] = override;
+                            return acc;
+                        }, {});
+
+                        // Generate comprehensive records
+                        const allPossibleRecords = [];
+                        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                            const dateStr = getLocalDateString(d);
+                            for (const employee of employeeUsers) {
+                                const key = `${employee.id}|${dateStr}`;
+                                const punches = recordsByDateAndUser[key];
+                                const dailyBreaks = breaksByDateAndUser[key] || [];
+                                const override = overridesMap[key];
+                                const totalBreakMs = calculateTotalBreakMs(dailyBreaks);
+
+                                let recordEntry = {
+                                    userId: employee.id,
+                                    email: employee.email,
+                                    date: dateStr,
+                                    status: 'Absent',
+                                    breakDuration: formatMilliseconds(totalBreakMs)
+                                };
+
+                                if (punches) {
+                                    const ins = punches.filter(p => p.type === 'in').map(p => new Date(p.timestamp.seconds * 1000)).sort((a, b) => a - b);
+                                    const outs = punches.filter(p => p.type === 'out').map(p => new Date(p.timestamp.seconds * 1000)).sort((a, b) => a - b);
+                                    
+                                    recordEntry.firstIn = ins.length > 0 ? ins[0] : null;
+                                    recordEntry.lastOut = outs.length > 0 ? outs[outs.length - 1] : null;
+
+                                    if (recordEntry.firstIn && recordEntry.lastOut) {
+                                        const grossMs = recordEntry.lastOut - recordEntry.firstIn;
+                                        const netWorkMs = grossMs - totalBreakMs;
+
+                                        if (netWorkMs > 0) {
+                                            recordEntry.workHours = formatMilliseconds(netWorkMs);
+                                            recordEntry.status = netWorkMs >= EIGHT_HOURS_MS ? 'Present' : 'Half Day';
+                                        } else {
+                                            recordEntry.status = 'Incomplete';
+                                        }
+                                    } else if (recordEntry.firstIn || recordEntry.lastOut) {
+                                        recordEntry.status = 'Incomplete';
+                                    }
+                                }
+                                
+                                if (override) {
+                                    recordEntry.status = override.status;
+                                }
+
+                                allPossibleRecords.push(recordEntry);
+                            }
+                        }
+                        
+                        allPossibleRecords.sort((a, b) => b.date.localeCompare(a.date) || a.email.localeCompare(b.email));
+                        setAttendanceRecords(allPossibleRecords);
+                    } catch (error) { 
+                        console.error("Failed to fetch admin data:", error); 
+                    } finally { 
+                        setLoading({ users: false, records: false }); 
+                    }
+                };
+                fetchData();
+            }, []);
+
+            const handleStatusChange = async (userId, date, newStatus) => {
+                const overrideId = `${userId}_${date}`;
+                const overrideRef = db.collection('attendance_overrides').doc(overrideId);
+                
+                try {
+                    await overrideRef.set({
+                        userId,
+                        date,
+                        status: newStatus,
+                        updatedBy: auth.currentUser.uid,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    setAttendanceRecords(prevRecords => 
+                        prevRecords.map(rec => 
+                            (rec.userId === userId && rec.date === date) ? { ...rec, status: newStatus } : rec
+                        )
+                    );
+                } catch (error) {
+                    console.error("Failed to update status:", error);
+                    alert("Could not update the status. Please try again.");
+                }
+            };
+
+            const handleRoleChange = async (userId, newRole) => { await db.collection('users').doc(userId).update({ role: newRole }); setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u)); };
+            
+            // --- MODIFICATION START: Add function to delete an employee ---
+            const handleDeleteEmployee = async (userId, userName) => {
+                // IMPORTANT: This function only deletes the user's record from the Firestore 'users' collection.
+                // It DOES NOT delete the user from Firebase Authentication. Deleting a user's authentication
+                // credentials requires admin privileges and must be done from a secure backend environment
+                // (like a Firebase Cloud Function), not from the client-side application.
+                // The user will still be able to log in, but they will have no associated role or data in the app.
+                if (window.confirm(`Are you sure you want to delete the user record for "${userName}"? This cannot be undone.`)) {
+                    try {
+                        await db.collection('users').doc(userId).delete();
+                        setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+                        alert(`User record for ${userName} has been deleted.`);
+                    } catch (error) {
+                        console.error("Error deleting user record: ", error);
+                        alert("Failed to delete user record. Please see the console for more details.");
+                    }
+                }
+            };
+            // --- MODIFICATION END ---
+            
+            const handleDownload = () => {
+                const headers = ["Employee Email", "Date", "Punch In", "Punch Out", "Working Hours", "Break Duration", "Status"];
+                const csvRows = [headers.join(',')];
+                for (const rec of attendanceRecords) {
+                    const punchIn = rec.firstIn ? rec.firstIn.toLocaleTimeString() : 'N/A';
+                    const punchOut = rec.lastOut ? rec.lastOut.toLocaleTimeString() : 'N/A';
+                    const workHours = rec.workHours || 'N/A';
+                    const breakDuration = rec.breakDuration || 'N/A';
+                    const row = [rec.email, rec.date, punchIn, punchOut, `"${workHours}"`, `"${breakDuration}"`, rec.status];
+                    csvRows.push(row.join(','));
+                }
+                const csvString = csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `attendance_records_${getLocalDateString()}.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            };
+
+            const renderStatusCell = (rec) => {
+                switch (rec.status) {
+                    case 'Present':
+                        return <strong>{rec.workHours}</strong>;
+                    case 'Incomplete':
+                        return <span className="incomplete-record">{rec.status}</span>;
+                    default:
+                        return (
+                            <select value={rec.status} onChange={(e) => handleStatusChange(rec.userId, rec.date, e.target.value)}>
+                                <option value="Absent">Absent</option>
+                                <option value="Present">Present</option>
+                                <option value="Half Day">Half Day</option>
+                                <option value="Holiday">Holiday</option>
+                            </select>
+                        );
+                }
+            };
+
+            return (
+                <div className="dashboard-layout">
+                    <nav className="dashboard-nav">
+                        <button className={`dashboard-nav-button ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveView('dashboard')}>Dashboard</button>
+                        <button className={`dashboard-nav-button ${activeView === 'attendance' ? 'active' : ''}`} onClick={() => setActiveView('attendance')}>Attendance</button>
+                        <button className={`dashboard-nav-button ${activeView === 'users' ? 'active' : ''}`} onClick={() => setActiveView('users')}>Users</button>
+                        <button className={`dashboard-nav-button ${activeView === 'addEmployee' ? 'active' : ''}`} onClick={() => setActiveView('addEmployee')}>Add Employee</button>
+                    </nav>
+                    <main className="dashboard-content">
+                        {activeView === 'dashboard' && (
+                            <div>
+                                <h2>Live QR Code</h2>
+                                <div className="qr-timer">New code in: <span>{countdown}s</span></div>
+                                <div id="qrcode-container">{!qrPayload && <div className="loading-spinner"></div>}</div>
+                            </div>
+                        )}
+                        {activeView === 'attendance' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h2>Attendance Records</h2>
+                                    {!loading.records && attendanceRecords.length > 0 && (<button onClick={handleDownload} className="header-button">Download CSV</button>)}
+                                </div>
+                                {loading.records ? <div className="loading-spinner"></div> : ( attendanceRecords.length > 0 ? ( <div className="table-responsive"><table className="data-table"><thead><tr><th>Employee</th><th>Date</th><th>Punch In</th><th>Punch Out</th><th>Break Duration</th><th>Net Hours</th></tr></thead><tbody>
+                                {attendanceRecords.map(rec => (
+                                    <tr key={`${rec.userId}-${rec.date}`}>
+                                        <td>{rec.email}</td>
+                                        <td>{rec.date}</td>
+                                        <td>{rec.firstIn ? rec.firstIn.toLocaleTimeString() : 'N/A'}</td>
+                                        <td>{rec.lastOut ? rec.lastOut.toLocaleTimeString() : 'N/A'}</td>
+                                        <td>{rec.breakDuration || 'N/A'}</td>
+                                        <td>{renderStatusCell(rec)}</td>
+                                    </tr>
+                                ))}
+                                </tbody></table></div>) : (<p>No attendance records found.</p>) )}
+                            </div>
+                        )}
+                        {activeView === 'users' && (
+                            <div>
+                                <h2>User Management</h2>
+                                {/* --- MODIFICATION START: Update User Management Table --- */}
+                                {loading.users ? <div className="loading-spinner"></div> : ( users.length > 0 ? ( <div className="table-responsive"><table className="data-table"><thead><tr><th>Name</th><th>Email</th><th>Employee ID</th><th>Role</th><th>Change Role</th><th>Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id}><td>{user.name}</td><td>{user.email}</td><td>{user.employeeId || 'N/A'}</td><td style={{textTransform: 'capitalize'}}>{user.role}</td><td><select value={user.role} onChange={(e) => handleRoleChange(user.id, e.target.value)} disabled={user.role === 'admin'}><option value="admin">Admin</option><option value="employee">Employee</option></select></td><td>{user.role !== 'admin' && (<button onClick={() => handleDeleteEmployee(user.id, user.name)} className="header-button signout-button" style={{padding: '5px 10px', fontSize: '0.8em'}}>Delete</button>)}</td></tr>))}</tbody></table></div>) : (<p>No users found.</p>) )}
+                                {/* --- MODIFICATION END --- */}
+                            </div>
+                        )}
+                        {activeView === 'addEmployee' && (
+                            <div>
+                                <h2>Add New Employee</h2>
+                                <form onSubmit={handleCreateEmployee} className="auth-form add-employee-form">
+                                    {message && <p className={`message ${message.type}`}>{message.text}</p>}
+                                    <div className="input-group">
+                                        <label>Full Name</label>
+                                        <input type="text" name="name" value={newEmployee.name} onChange={handleNewEmployeeChange} required />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Email Address</label>
+                                        <input type="email" name="email" value={newEmployee.email} onChange={handleNewEmployeeChange} required />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Employee ID</label>
+                                        <input type="text" name="employeeId" value={newEmployee.employeeId} onChange={handleNewEmployeeChange} required />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Password</label>
+                                        <input type="password" name="password" value={newEmployee.password} onChange={handleNewEmployeeChange} required />
+                                    </div>
+                                    <button type="submit" className="auth-button">Create Employee</button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const EmployeeDashboard = () => {
+            const [activeView, setActiveView] = useState('scan');
+            const [lastPunch, setLastPunch] = useState(null);
+            const [isScanning, setIsScanning] = useState(false);
+            const [message, setMessage] = useState(null);
+            const html5QrCodeRef = useRef(null);
+            const [myRecords, setMyRecords] = useState([]);
+            const [loadingRecords, setLoadingRecords] = useState(true);
+            const [hasPunchedInToday, setHasPunchedInToday] = useState(false);
+            const [hasPunchedOutToday, setHasPunchedOutToday] = useState(false);
+            const [lastBreak, setLastBreak] = useState(null);
+            const scanModeRef = useRef('punch');
+
+            const toJsDate = (timestamp) => {
+                if (!timestamp) return null;
+                if (typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') { return timestamp.toDate(); }
+                return timestamp;
+            };
+
+            // --- Helper Functions for Time Calculation ---
+            const calculateTotalBreakMs = (breakEvents) => {
+                if (!breakEvents || breakEvents.length < 2) return 0;
+                const breaks = breakEvents.map(b => ({...b, time: toJsDate(b.timestamp) }))
+                                          .sort((a, b) => a.time - b.time);
+                let totalBreakMs = 0;
+                let lastStartTime = null;
+                for (const event of breaks) {
+                    if (event.type === 'start') {
+                        lastStartTime = event.time;
+                    } else if (event.type === 'end' && lastStartTime) {
+                        totalBreakMs += (event.time - lastStartTime);
+                        lastStartTime = null;
+                    }
+                }
+                return totalBreakMs > 0 ? totalBreakMs : 0;
+            };
+
+            const formatMilliseconds = (ms) => {
+                if (ms <= 0) return null;
+                const hours = Math.floor(ms / 3600000);
+                const minutes = Math.floor((ms % 3600000) / 60000);
+                return `${hours}h ${minutes}m`;
+            };
+
+            const fetchEmployeeData = async () => {
+                if (!auth.currentUser) return;
+                setLoadingRecords(true);
+                try {
+                    const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+                    const todayStr = getLocalDateString();
+
+                    const attendanceRef = db.collection('attendance').where('userId', '==', auth.currentUser.uid).orderBy('timestamp', 'desc');
+                    const snapshot = await attendanceRef.get();
+                    const allRecords = snapshot.docs.map(doc => doc.data());
+
+                    const breakRef = db.collection('breaks').where('userId', '==', auth.currentUser.uid).orderBy('timestamp', 'asc');
+                    const breakSnapshot = await breakRef.get();
+                    const allBreaks = breakSnapshot.docs.map(doc => doc.data());
+                    
+                    const todaysRecords = allRecords.filter(rec => rec.date === todayStr);
+                    setHasPunchedInToday(todaysRecords.some(rec => rec.type === 'in'));
+                    setHasPunchedOutToday(todaysRecords.some(rec => rec.type === 'out'));
+                    setLastPunch(todaysRecords[0] || null);
+                    
+                    const todaysBreakRef = db.collection('breaks').where('userId', '==', auth.currentUser.uid).where('date', '==', todayStr).orderBy('timestamp', 'desc').limit(1);
+                    const todaysBreakSnapshot = await todaysBreakRef.get();
+                    setLastBreak(todaysBreakSnapshot.empty ? null : todaysBreakSnapshot.docs[0].data());
+                    
+                    const overridesRef = db.collection('attendance_overrides').where('userId', '==', auth.currentUser.uid);
+                    const overridesSnapshot = await overridesRef.get();
+                    const overrides = overridesSnapshot.docs.map(doc => doc.data());
+                    const overridesMap = overrides.reduce((acc, o) => ({...acc, [o.date]: o }), {});
+
+                    if (allRecords.length === 0 && overrides.length === 0) {
+                        setMyRecords([]);
+                    } else {
+                        const groupedRecords = allRecords.reduce((acc, record) => { const date = record.date; if (!acc[date]) { acc[date] = { date, punches: [] }; } acc[date].punches.push({ type: record.type, time: toJsDate(record.timestamp) }); return acc; }, {});
+                        const breaksByDate = allBreaks.reduce((acc, br) => { const date = br.date; if(!acc[date]) { acc[date] = []; } acc[date].push({ type: br.type, timestamp: br.timestamp }); return acc; }, {});
+
+                        Object.values(overridesMap).forEach(override => {
+                            if (!groupedRecords[override.date]) {
+                                groupedRecords[override.date] = { date: override.date, punches: [] };
+                            }
+                            groupedRecords[override.date].overrideStatus = override.status;
+                        });
+                        
+                        const processedRecords = Object.values(groupedRecords).map(group => { 
+                            group.punches.sort((a, b) => a.time - b.time);
+                            
+                            const dailyBreaks = breaksByDate[group.date] || [];
+                            const totalBreakMs = calculateTotalBreakMs(dailyBreaks);
+                            const breakDuration = formatMilliseconds(totalBreakMs);
+
+                            if (group.overrideStatus) {
+                                group.status = group.overrideStatus;
+                                return { ...group, breakDuration };
+                            }
+                            const ins = group.punches.filter(p => p.type === 'in'); 
+                            const outs = group.punches.filter(p => p.type === 'out');
+                            
+                            const firstIn = ins.length > 0 ? ins[0].time : null;
+                            const lastOut = outs.length > 0 ? outs[outs.length - 1].time : null;
+
+                            if (firstIn && lastOut) { 
+                                const grossMs = lastOut - firstIn;
+                                const netWorkMs = grossMs - totalBreakMs;
+                                
+                                if (netWorkMs < 0) return { ...group, status: 'Incomplete', breakDuration }; 
+
+                                const workHours = formatMilliseconds(netWorkMs);
+                                const status = netWorkMs >= EIGHT_HOURS_MS ? 'Present' : 'Half Day';
+                                return { ...group, status, workHours, breakDuration }; 
+                            } else if (firstIn || lastOut) {
+                                return { ...group, status: 'Incomplete', breakDuration };
+                            }
+                            return { ...group, status: 'Absent', breakDuration };
+                        }).sort((a,b) => b.date.localeCompare(a.date));
+                        setMyRecords(processedRecords);
+                    }
+                } catch(error) {
+                    console.error("Error fetching employee data:", error);
+                    setMessage({ type: 'error', text: `Could not load your data. Error: ${error.message}` });
+                } finally { setLoadingRecords(false); }
+            };
+            
+            useEffect(() => { fetchEmployeeData(); }, []);
+
+            const stopScanner = async () => {
+                if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+                    try { await html5QrCodeRef.current.stop(); } catch (err) { console.warn("Scanner stop error:", err) }
+                }
+                setIsScanning(false);
+            };
+
+            const handleScanSuccess = async (decodedText) => { 
+                await stopScanner();
+                try { 
+                    const scannedData = JSON.parse(decodedText); 
+                    const tokenDoc = await db.collection('system').doc('qr_token').get(); 
+                    if (!tokenDoc.exists) throw new Error("QR system not configured."); 
+                    const validTokenData = tokenDoc.data(); 
+                    if (scannedData.token !== validTokenData.token || Date.now() > validTokenData.expiry) throw new Error("Invalid or expired QR code."); 
+                    
+                    if (scanModeRef.current === 'punch') {
+                        const punchType = (lastPunch?.type === 'in') ? 'out' : 'in'; 
+                        if (punchType === 'in' && hasPunchedInToday) { throw new Error("You have already punched IN today."); }
+                        if (punchType === 'out' && !hasPunchedInToday) { throw new Error("You must punch IN before you can punch OUT."); }
+                        if (punchType === 'out' && hasPunchedOutToday) { throw new Error("You have already punched OUT today."); }
+                        const newRecord = { userId: auth.currentUser.uid, email: auth.currentUser.email, timestamp: firebase.firestore.FieldValue.serverTimestamp(), date: getLocalDateString(), type: punchType }; 
+                        await db.collection('attendance').add(newRecord); 
+                        setMessage({ type: 'success', text: `Successfully Punched ${punchType.toUpperCase()}!` });
+                    } else if (scanModeRef.current === 'break') {
+                        const isOnBreak = lastBreak?.type === 'start';
+                        const breakType = isOnBreak ? 'end' : 'start';
+                        const newBreakRecord = { userId: auth.currentUser.uid, email: auth.currentUser.email, timestamp: firebase.firestore.FieldValue.serverTimestamp(), date: getLocalDateString(), type: breakType };
+                        await db.collection('breaks').add(newBreakRecord);
+                        setMessage({ type: 'success', text: `Break ${breakType === 'start' ? 'started' : 'ended'} successfully!` });
+                    }
+                    
+                    setTimeout(() => fetchEmployeeData(), 1000);
+                } catch (error) { 
+                    console.error("Scan failed with error:", error);
+                    setMessage({ type: 'error', text: `Error: ${error.message}` }); 
+                } 
+            };
+            
+            const startScanner = (mode = 'punch') => { 
+                scanModeRef.current = mode;
+                setMessage(null); 
+                setIsScanning(true);
+                try {
+                    const scanner = new Html5Qrcode("qr-reader"); 
+                    html5QrCodeRef.current = scanner; 
+                    scanner.start( { facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, handleScanSuccess, (errorMessage) => {})
+                    .catch(err => { 
+                        setMessage({ type: 'error', text: "Could not start camera. Please grant permission and use HTTPS." }); 
+                        setIsScanning(false); 
+                    });
+                } catch (err) {
+                    setMessage({ type: 'error', text: "QR Scanner failed to initialize." }); 
+                    setIsScanning(false);
+                }
+            };
+            
+            const renderEmployeeStatus = (rec) => {
+                switch (rec.status) {
+                    case 'Present':
+                        return <span className="status-cell"><span className="status-present">{rec.status}</span></span>;
+                    case 'Half Day':
+                        return <span className="status-cell"><span className="status-half-day">{rec.status}</span></span>;
+                    case 'Incomplete':
+                        return <span className="incomplete-record">{rec.status}</span>;
+                    case 'Holiday':
+                        return <span className="status-cell"><span className="status-holiday">{rec.status}</span></span>;
+                    case 'Absent':
+                        return <span className="status-cell"><span className="status-absent">{rec.status}</span></span>;
+                    default:
+                        return rec.status;
+                }
+            };
+            
+            const canTakeBreak = lastPunch?.type === 'in';
+            const isOnBreak = lastBreak?.type === 'start';
+
+            return (
+                <div className="dashboard-layout">
+                    <nav className="dashboard-nav">
+                        <button className={`dashboard-nav-button ${activeView === 'scan' ? 'active' : ''}`} onClick={() => { setActiveView('scan'); stopScanner(); }}>Scan QR</button>
+                        <button className={`dashboard-nav-button ${activeView === 'break' ? 'active' : ''}`} onClick={() => { setActiveView('break'); stopScanner(); }}>Manage Break</button>
+                        <button className={`dashboard-nav-button ${activeView === 'history' ? 'active' : ''}`} onClick={() => { setActiveView('history'); stopScanner(); }}>My History</button>
+                    </nav>
+                    <main className="dashboard-content">
+                        {activeView === 'scan' && (
+                            <div>
+                                <h2>Scan Attendance QR</h2>
+                                {!lastPunch ? (
+                                    <div className="status-box" style={{backgroundColor: '#e3f2fd', color: '#1e88e5'}}>
+                                        Your status: <strong>Ready to Punch In</strong>
+                                    </div>
+                                ) : (
+                                    <div className={`status-box ${lastPunch.type === 'in' ? 'status-in' : 'status-out'}`}>
+                                        Your current status: <strong>PUNCHED {lastPunch.type.toUpperCase()}</strong>
+                                        {lastPunch.type === 'in' && lastPunch.timestamp && ` since ${toJsDate(lastPunch.timestamp).toLocaleTimeString()}`}
+                                    </div>
+                                )}
+                                {message && <p className={`message ${message.type}`}>{message.text}</p>}
+                                <div className="scan-area">
+                                    <div className="qr-reader-container">
+                                        <div id="qr-reader" style={{ display: isScanning ? 'block' : 'none' }}></div>
+                                        {!isScanning && <p>Camera will appear here</p>}
+                                    </div>
+                                    {!isScanning && (
+                                        <>
+                                            {hasPunchedInToday && hasPunchedOutToday ? (
+                                                <p style={{marginTop: '20px', fontWeight: 'bold'}}>You have completed your attendance for today.</p>
+                                            ) : (
+                                                <button className="scan-button" onClick={() => startScanner('punch')}>
+                                                    {lastPunch?.type === 'in' ? 'Scan to Punch OUT' : 'Scan to Punch IN'}
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {activeView === 'break' && (
+                            <div>
+                                <h2>Break Management</h2>
+                                {message && <p className={`message ${message.type}`}>{message.text}</p>}
+                                <div className="scan-area">
+                                    <div className="qr-reader-container">
+                                        <div id="qr-reader" style={{ display: isScanning ? 'block' : 'none' }}></div>
+                                        {!isScanning && <p>Camera will appear here</p>}
+                                    </div>
+                                    {!isScanning && (
+                                      <div>
+                                        {!canTakeBreak ? (
+                                            <p className="break-status disabled">You must be punched in to take a break.</p>
+                                        ) : isOnBreak ? (
+                                            <>
+                                                <p className="break-status on-break">You are currently ON BREAK.</p>
+                                                <button className="scan-button break-button" onClick={() => startScanner('break')}>
+                                                    Scan to End Break
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="break-status">You are not on a break.</p>
+                                                <button className="scan-button break-button" onClick={() => startScanner('break')}>
+                                                    Scan to Start Break
+                                                </button>
+                                            </>
+                                        )}
+                                      </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {activeView === 'history' && (
+                            <div>
+                                <h2>My Attendance History</h2>
+                                {loadingRecords ? <div className="loading-spinner"></div> : (
+                                    <div className="table-responsive">
+                                        <table className="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Punch Log</th>
+                                                    <th>Net Hours</th>
+                                                    <th>Break Duration</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {myRecords.length === 0 ? (
+                                                    <tr><td colSpan="5">You have no attendance records yet.</td></tr>
+                                                ) : (
+                                                    myRecords.map(rec => (
+                                                        <tr key={rec.date}>
+                                                            <td>{rec.date}</td>
+                                                            <td>
+                                                                <div className="punch-log-cell">
+                                                                {rec.punches && rec.punches.length > 0 ? (
+                                                                    rec.punches.map((punch, index) => (
+                                                                        <span key={index} className={`punch-log-item punch-${punch.type}`}>
+                                                                            {`${punch.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${punch.type.toUpperCase()})`}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span>No Punches</span>
+                                                                )}
+                                                                </div>
+                                                            </td>
+                                                            <td><strong>{rec.workHours || 'N/A'}</strong></td>
+                                                            <td><strong>{rec.breakDuration || 'N/A'}</strong></td>
+                                                            <td>{renderEmployeeStatus(rec)}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [userData, setUserData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [showProfile, setShowProfile] = useState(false);
+
+            useEffect(() => {
+                let unsubscribeUserData = () => {};
+                const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
+                    setLoading(true);
+                    unsubscribeUserData(); 
+                    if (currentUser) {
+                        setUser(currentUser);
+                        const docRef = db.collection("users").doc(currentUser.uid);
+                        unsubscribeUserData = docRef.onSnapshot((docSnap) => {
+                            if (docSnap.exists) { setUserData(docSnap.data()); } else { setUserData(null); }
+                            setLoading(false);
+                        }, (error) => {
+                            console.error("Error listening to user data:", error);
+                            setUserData(null);
+                            setLoading(false);
+                        });
+                    } else { 
+                        setUser(null); 
+                        setUserData(null); 
+                        setLoading(false);
+                    }
+                });
+                return () => { unsubscribeAuth(); unsubscribeUserData(); };
+            }, []);
+
+            const handleSignOut = () => auth.signOut();
+            
+            if (loading) return <div className="loading-spinner"></div>;
+
+            const renderDashboard = () => {
+                if (!userData) return <div className="loading-spinner"><p>Verifying user role...</p></div>;
+                switch (userData.role) {
+                    case 'admin': return <AdminDashboard />;
+                    case 'employee': return <EmployeeDashboard />;
+                    default: return <p>Unknown role. Please contact support.</p>;
+                }
+            };
+
+            return (
+                <div className="App">
+                    {showProfile && <ProfileModal user={userData} onClose={() => setShowProfile(false)} />}
+                    <header className="app-header">
+                        <h1>Atmark</h1>
+                        {user && (
+                            <div className="header-actions">
+                                <button className="header-button" onClick={() => setShowProfile(true)}>Profile</button>
+                                <button className="header-button signout-button" onClick={handleSignOut}>Sign Out</button>
+                            </div>
+                        )}
+                    </header>
+                    <main>{!user ? <Auth /> : renderDashboard()}</main>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
